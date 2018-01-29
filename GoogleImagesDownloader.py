@@ -4,66 +4,85 @@ import time
 import argparse
 import urllib
 import json
-from urllib.request import Request, urlopen
-from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-from selenium.webdriver.common.keys import Keys
+import logging
+import logging.handlers
+from MainWindow import Ui_MainWindow
+from webDriverUtils import WebDriverUtils
 
-URL = "http://www.google.co.in/search?q={}&source=lnms&tbm=isch"
+try:
+    from PyQt5 import QtGui, QtCore, QWidgets
+except ImportError:
+    # needed for py3+qt4
+    # Ref:
+    # http://pyqt.sourceforge.net/Docs/PyQt4/incompatible_apis.html
+    # http://stackoverflow.com/questions/21217399/pyqt4-qtcore-qvariant-object-instead-of-a-string
+    if sys.version_info.major >= 3:
+        import sip
+        sip.setapi('QVariant', 2)
+    from PyQt4 import QtCore, QtGui
 
-def getImageUrls(html_text) :
-    soup = BeautifulSoup(html_text, 'html.parser')
-    actualImages=[]# contains the link for Large original images, type of  image
-    for a in soup.find_all("div",{"class":"rg_meta"}):
-        link , Type =json.loads(a.text)["ou"]  ,json.loads(a.text)["ity"]
-        actualImages.append((link,Type))
-    return actualImages
+os.system("echo 'executing'")
+os.system('Xvf :10 -ac &')
+os.system('export DISPLAY=:10')
 
-def isPageLoaded(driver):
-    page_state = driver.execute_script('return document.readyState;')
-    return page_state == 'complete'
-
-def main(args):
-    pause = 5
-    firefox_capabilities = DesiredCapabilities.FIREFOX
-    firefox_capabilities['marionette'] = True
-    driver = webdriver.Firefox(capabilities=firefox_capabilities, executable_path='./geckodriver')
-    driver.get(URL.format(args.search_term))
+class GoogleImagesDownloader(QtGui.QMainWindow):
     
-    while not isPageLoaded(driver): pass
-    lastHeight = driver.execute_script("return document.body.scrollHeight")
-    flg = 0
-    while True:
-        # Action scroll down
-        actualImages = getImageUrls(driver.page_source)
-        if len(actualImages) > args.num_images:
-            break;
-        print('scroll down')
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(2)
-        print('pageScrolled')
-        newHeight = driver.execute_script("return document.body.scrollHeight")
-        print('New Height : ' + str(newHeight))
-        if newHeight == lastHeight:
-            if flg == 0:
-                driver.find_element_by_id('smb').click()
-                flg = 1
-            else:
-                break
-            time.sleep(1)
-        lastHeight = newHeight
-    actualImages = getImageUrls(driver.page_source)
-    print(len(actualImages))
-    
+    def __init__(self, parent=None):
+        super(GoogleImagesDownloader, self).__init__(parent)
+        self.webDriverUtils = WebDriverUtils()
+        self.ui = Ui_MainWindow()
+        self.ui.setupUi(self)
+        self.ui.save_button.clicked.connect(self.save_on_click)
+        self.ui.next_image_button.clicked.connect(self.next_image_on_click)
+        self.ui.previous_image_button.clicked.connect(self.previous_image_on_click)
+        self.ui.search_button.clicked.connect(self.search_on_click)
+        self.ui.save_dir_button.clicked.connect(self.save_dir_on_click)
 
-def parse_arguments(argv):
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--search_term', type=str, default='trees', help='Search term for images')
-    parser.add_argument('--url_file', type=str, help='Path(s) of the url file')
-    parser.add_argument('--save_dir', type=str, default='./', help='Path of the directory to save images')
-    parser.add_argument('--num_images', type=int, default='300', help='Number of images to load from google')
-    return parser.parse_args(argv)
+        self.add_action('d', self.next_image_on_click)
+        self.add_action('a', self.previous_image_on_click)
+        self.add_action('s', self.save_on_click)
+
+    def add_action(self, shortcut, method_name):
+        action = QtGui.QAction(self) 
+        action.setShortcut(shortcut) 
+        action.setShortcutContext(QtCore.Qt.ApplicationShortcut)
+        self.addAction(action)
+        QtCore.QObject.connect(action, QtCore.SIGNAL("triggered()"), method_name)
+
+    def next_image_on_click(self):
+        print('Next Image')
+
+    def previous_image_on_click(self):
+        print('Previous Image')
+
+    def save_on_click(self):
+        print('Save Image')
+
+    def search_on_click(self):
+        print('Searching')
+        search_text = self.ui.search_term_text_box.text().strip()
+        num_samples = self.ui.num_images_text_box.text().strip()
+        actual_images = self.webDriverUtils.get_image_urls_from_google_images(int(num_samples), search_text)
+        for url in actual_images:
+            self.ui.loaded_url.addItem(str(url))
+        print(search_text)
+        print(num_samples)
+
+    def save_dir_on_click(self):
+        print('changing save dir')
+        open_dir = QtGui.QFileDialog.getExistingDirectory(self, "Open Directory",
+                                                 os.getcwd(),
+                                                 QtGui.QFileDialog.ShowDirsOnly
+                                                 | QtGui.QFileDialog.DontResolveSymlinks).strip()
+        print(open_dir)
+        if not len(open_dir) == 0:
+            print('New Folder : ' + open_dir)
+            self.save_dir = open_dir
+    
 
 if __name__ == '__main__':
-    main(parse_arguments(sys.argv[1:]))
+
+    app = QtGui.QApplication(sys.argv)
+    calculator = GoogleImagesDownloader()
+    calculator.show()
+    sys.exit(app.exec_())
