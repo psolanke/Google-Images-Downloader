@@ -1,3 +1,4 @@
+import os
 import time
 import argparse
 import urllib
@@ -54,9 +55,9 @@ class WebDriverUtils:
 
     def get_image_urls(self) :
         soup = BeautifulSoup(self.driver.page_source , 'html.parser')
-        actual_images=[]# contains the link for Large original images, type of  image
+        actual_images = []# contains the link for Large original images, type of  image
         for a in soup.find_all("div",{"class":"rg_meta"}):
-            link , Type =json.loads(a.text)["ou"]  ,json.loads(a.text)["ity"]
+            link , Type = json.loads(a.text)["ou"]  ,json.loads(a.text)["ity"]
             actual_images.append((link,Type))
         return actual_images
 
@@ -88,45 +89,44 @@ class WebDriverUtils:
 
 class DownloadUtils:
 
-    def __init__(self,url_list):
-        self.url_list = url_list
-        self.seek = 0
-        url, file_type = url_list[self.seek]
-        self.current_image = {'url': url_list[see], 'type': file_type, 'image_raw': None}
-        # self._image = {'url': '', 'type': '', 'image_raw': ''}
-        # self.current_image = {'url': '', 'type': '', 'image_raw': ''}
+    # def __init__(self):
+    #     self.url_list = url_list
+    #     self.seek = 0
+    #     url, file_type = url_list[self.seek]
+    #     self.current_image = {'url': url_list[see], 'type': file_type, 'image_raw': None}
+    #     # self._image = {'url': '', 'type': '', 'image_raw': ''}
+    #     # self.current_image = {'url': '', 'type': '', 'image_raw': ''}
 
-    def load_next_image(self):
-        url = self.current_image['url']
-        raw_img = self.current_image['image_raw']
-        self.seek += 1
-        next_url, next_file_type = url_list[seek]
-        self.current_image['url'] = next_url
-        self.current_image['type'] = next_file_type
-        self.current_image['image_raw'] = self.get_image_from_url(next_url)
-        return raw_img
-
-
-
-    # def load_previous_image(self):
+    # def load_next_image(self):
+    #     url = self.current_image['url']
+    #     raw_img = self.current_image['image_raw']
+    #     self.seek += 1
+    #     next_url, next_file_type = url_list[seek]
+    #     self.current_image['url'] = next_url
+    #     self.current_image['type'] = next_file_type
+    #     self.current_image['image_raw'] = self.get_image_from_url(next_url)
+    #     return raw_img
 
 
 
-    def add_to_url_list(self, url_list):
-        self.url_list.append(url_list)
+    # # def load_previous_image(self):
 
-    def get_image_from_url(self,url):
+
+
+    # def add_to_url_list(self, url_list):
+    #     self.url_list.append(url_list)
+
+    def get_image_from_url(self,img_url):
         raw_img = urllib.request.urlopen(img_url,timeout=1000)
         raw_img = raw_img.read()
         return raw_img
 
-    def save_current_image(self):
-        if len(currentfile_type)==0:
-            f = open(os.path.join(save_directory , "img" + "_"+ str(count)+".jpg"), 'wb')
-        else :
-            f = open(os.path.join(save_directory , "img" + "_"+ str(count)+"."+file_type), 'wb')
+    def save_current_image(self,save_dir,raw_img,img_type):
+        filename = "img" + "_"+ str(int(time.time()))+"."+img_type
+        f = open(os.path.join(save_dir , filename), 'wb')
         f.write(raw_img)
         f.close()
+        return filename
 
     # def load_next_image(self):
 
