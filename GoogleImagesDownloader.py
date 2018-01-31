@@ -25,8 +25,8 @@ except ImportError:
     from PyQt4 import QtCore, QtGui
 
 os.system("echo 'executing'")
-os.system('Xvf :10 -ac &')
-os.system('export DISPLAY=:10')
+# os.system('Xvfb :21 -ac &')
+# os.system('export DISPLAY=:21')
 
 def setup_logger():
     LOG_FILENAME = 'google_image_downloader.log'
@@ -58,13 +58,16 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
         super(GoogleImagesDownloader, self).__init__(parent)
 
         self.prefetch_images = {'previous' : None, 'current' : None, 'next' : None}
+        self.prefetch_images_list = []
         self.previous_images_list = []
         self.next_images_list = []
         self.webDriverUtils = WebDriverUtils()
         self.downloadUtils = DownloadUtils()
         self.save_dir = os.getcwd()
         self.current_image_tuple = ()
+        self.current_url_index = 0
         self.saved_images = {}
+        self.loaded_url_count = 0
         self.current_raw_image = None
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
@@ -79,6 +82,11 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
         self.add_action('a', self.previous_image_on_click)
         self.add_action('s', self.save_on_click)
 
+    def closeEvent(self,event):
+        print('On_close')
+        self.webDriverUtils.close()
+        self.destroy()
+
     def add_action(self, shortcut, method_name):
         action = QtGui.QAction(self) 
         action.setShortcut(shortcut) 
@@ -91,7 +99,9 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
         if self.current_image_tuple:
             self.previous_images_list.append(self.current_image_tuple)
         self.current_image_tuple = self.next_images_list.pop()
+        self.current_url_index += 1
         self.load_current_image_tuple()
+        self.update_current_image_index_label()
         print(self.current_image_tuple)
 
     def previous_image_on_click(self):
@@ -99,7 +109,10 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
         if self.previous_images_list:
             self.next_images_list.append(self.current_image_tuple)
             self.current_image_tuple = self.previous_images_list.pop()
-        self.load_current_image_tuple()
+            self.current_url_index -= 1
+            self.load_current_image_tuple()
+            self.update_current_image_index_label()
+        
         print(self.current_image_tuple)
 
     def load_current_image_tuple(self):
@@ -120,11 +133,16 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
         print('Saving Image...')
         saved_filename = self.downloadUtils.save_current_image(self.save_dir,self.current_raw_image,self.current_image_tuple[1])
         self.saved_images[self.current_image_tuple[0]] = saved_filename
+        self.update_saved_images_count_label()
 
     def delete_on_click(self):
         print('Deleting Image...')
         os.remove(os.path.join(self.save_dir,self.saved_images.get(self.current_image_tuple[0])))
         self.saved_images.pop(self.current_image_tuple[0])
+        self.update_saved_images_count_label()
+
+    def update_saved_images_count_label(self):
+        self.ui.saved_images_count_label.setText(str(len(self.saved_images)))
 
 
     def search_on_click(self):
@@ -139,8 +157,13 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
             self.next_images_list = new_images_list
         else:
             self.next_images_list = new_images_list + self.next_images_list
+        self.loaded_url_count = len(self.next_images_list)
+        self.update_current_image_index_label()
         print(search_text)
         print(num_samples)
+
+    def update_current_image_index_label(self):
+        self.ui.current_image_index_label.setText(str(self.loaded_url_count)+' \ '+str(self.current_url_index))
 
     def save_dir_on_click(self):
         print('changing save dir')
@@ -158,6 +181,6 @@ if __name__ == '__main__':
 
     setup_logger()
     app = QtGui.QApplication(sys.argv)
-    calculator = GoogleImagesDownloader()
-    calculator.show()
+    google_image_downloader = GoogleImagesDownloader()
+    google_image_downloader.show()
     sys.exit(app.exec_())

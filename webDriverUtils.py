@@ -21,9 +21,15 @@ class WebDriverUtils:
     SHOW_MORE_BUTTON_ID = 'smb'
 
     def __init__(self):
+        self.driver = None
         firefox_capabilities = DesiredCapabilities.FIREFOX
         firefox_capabilities['marionette'] = True
         self.driver = webdriver.Firefox(capabilities=firefox_capabilities, executable_path=self.GEKO_EXECUTABLE_PATH)
+
+    def close(self):
+        print('closeing')
+        self.driver.close()
+        os.system('pkill gekodriver')
 
     def get_image_urls_from_google_images(self, num_images, search_term):
         self.load_google_image_search_page(search_term)
