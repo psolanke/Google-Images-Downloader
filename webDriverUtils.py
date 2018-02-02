@@ -10,6 +10,7 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.common.keys import Keys
 import logging
 import logging.handlers
+from pyvirtualdisplay import Display
 
 class WebDriverUtils:
     """
@@ -21,6 +22,9 @@ class WebDriverUtils:
     SHOW_MORE_BUTTON_ID = 'smb'
 
     def __init__(self):
+        self.display = Display(visible=0, size=[800, 600])
+        self.display.start()
+        # subprocess.call(['ps'])
         self.driver = None
         firefox_capabilities = DesiredCapabilities.FIREFOX
         firefox_capabilities['marionette'] = True
@@ -28,8 +32,7 @@ class WebDriverUtils:
 
     def close(self):
         print('closeing')
-        self.driver.close()
-        os.system('pkill gekodriver')
+        self.display.close()
 
     def get_image_urls_from_google_images(self, num_images, search_term):
         self.load_google_image_search_page(search_term)

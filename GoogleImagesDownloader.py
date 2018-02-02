@@ -11,6 +11,7 @@ from webDriverUtils import WebDriverUtils, DownloadUtils
 from PIL import Image
 from PIL.ImageQt import ImageQt
 import io
+import subprocess
 
 try:
     from PyQt5 import QtGui, QtCore, QWidgets
@@ -85,7 +86,6 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
     def closeEvent(self,event):
         print('On_close')
         self.webDriverUtils.close()
-        self.destroy()
 
     def add_action(self, shortcut, method_name):
         action = QtGui.QAction(self) 
@@ -178,7 +178,6 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
     
 
 if __name__ == '__main__':
-
     setup_logger()
     app = QtGui.QApplication(sys.argv)
     google_image_downloader = GoogleImagesDownloader()
