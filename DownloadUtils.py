@@ -1,16 +1,18 @@
 import os
 import time
-import argparse
 import urllib
 import json
-from urllib.request import Request, urlopen
+import logging
+import psutil
+import threading
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-from selenium.webdriver.common.keys import Keys
-import logging
-import logging.handlers
 from pyvirtualdisplay import Display
+from urllib.request import Request, urlopen
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+
+
+GECKODRIVER = "geckodriver"
 
 class WebDriverUtils:
     """
@@ -24,26 +26,25 @@ class WebDriverUtils:
     def __init__(self):
         self.display = Display(visible=0, size=[800, 600])
         self.display.start()
-        # subprocess.call(['ps'])
-        self.driver = None
         firefox_capabilities = DesiredCapabilities.FIREFOX
         firefox_capabilities['marionette'] = True
         self.driver = webdriver.Firefox(capabilities=firefox_capabilities, executable_path=self.GEKO_EXECUTABLE_PATH)
 
     def close(self):
         print('closeing')
-        self.display.close()
+        self.display.stop()
+        for proc in psutil.process_iter():
+            # check whether the process name matches
+            if proc.name() == GECKODRIVER:
+                proc.kill()
 
-    def get_image_urls_from_google_images(self, num_images, search_term):
+    def get_image_urls_from_google_images(self, search_term):
         self.load_google_image_search_page(search_term)
         last_height = self.get_scroll_height() #.execute_script("return document.body.scrollHeight")
         actual_images = []
         flg = 0
         while True:
             # Action scroll down
-            actual_images = self.get_image_urls()
-            if len(actual_images) > num_images:
-                break;
             print('scroll down')
             self.scroll_to_bottom() #.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(2)
@@ -59,7 +60,7 @@ class WebDriverUtils:
                 time.sleep(1)
             last_height = new_height
         actual_images = self.get_image_urls()
-        return actual_images[:num_images]
+        return actual_images
 
 
     def get_image_urls(self) :
@@ -98,37 +99,15 @@ class WebDriverUtils:
 
 class DownloadUtils:
 
-    # def __init__(self):
-    #     self.url_list = url_list
-    #     self.seek = 0
-    #     url, file_type = url_list[self.seek]
-    #     self.current_image = {'url': url_list[see], 'type': file_type, 'image_raw': None}
-    #     # self._image = {'url': '', 'type': '', 'image_raw': ''}
-    #     # self.current_image = {'url': '', 'type': '', 'image_raw': ''}
+    def __init__(self):
+        self.is_download_complete = True
+        self.is_save_complete = True
 
-    # def load_next_image(self):
-    #     url = self.current_image['url']
-    #     raw_img = self.current_image['image_raw']
-    #     self.seek += 1
-    #     next_url, next_file_type = url_list[seek]
-    #     self.current_image['url'] = next_url
-    #     self.current_image['type'] = next_file_type
-    #     self.current_image['image_raw'] = self.get_image_from_url(next_url)
-    #     return raw_img
-
-
-
-    # # def load_previous_image(self):
-
-
-
-    # def add_to_url_list(self, url_list):
-    #     self.url_list.append(url_list)
-
-    def get_image_from_url(self,img_url):
+    def download_image_from_url(self,img_url):
         raw_img = urllib.request.urlopen(img_url,timeout=1000)
         raw_img = raw_img.read()
         return raw_img
+
 
     def save_current_image(self,save_dir,raw_img,img_type):
         filename = "img" + "_"+ str(int(time.time()))+"."+img_type
@@ -137,7 +116,14 @@ class DownloadUtils:
         f.close()
         return filename
 
-    # def load_next_image(self):
+    class ThreadFunc(threading.Thread):
+        def __init__(self, target, *args):
+            self._target = target
+            self._args = args
+            threading.Thread.__init__(self)
+     
+        def run(self):
+            self._target(*self._args)
 
 def main(args):
     pause = 5
@@ -166,4 +152,5 @@ def parse_arguments(argv):
     return parser.parse_args(argv)
 
 if __name__ == '__main__':
+    import argparse
     main(parse_arguments(sys.argv[1:]))

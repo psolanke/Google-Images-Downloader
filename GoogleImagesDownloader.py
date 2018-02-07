@@ -7,7 +7,7 @@ import json
 import logging
 import logging.handlers
 from MainWindow import Ui_MainWindow
-from webDriverUtils import WebDriverUtils, DownloadUtils
+from DownloadUtils import WebDriverUtils, DownloadUtils
 from PIL import Image
 from PIL.ImageQt import ImageQt
 import io
@@ -24,10 +24,6 @@ except ImportError:
         import sip
         sip.setapi('QVariant', 2)
     from PyQt4 import QtCore, QtGui
-
-os.system("echo 'executing'")
-# os.system('Xvfb :21 -ac &')
-# os.system('export DISPLAY=:21')
 
 def setup_logger():
     LOG_FILENAME = 'google_image_downloader.log'
@@ -118,7 +114,7 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
     def load_current_image_tuple(self):
         image_filename = self.saved_images.get(self.current_image_tuple[0])
         if image_filename == None:
-            raw_image = self.downloadUtils.get_image_from_url(self.current_image_tuple[0])
+            raw_image = DownloadUtils.get_image_from_url(self.current_image_tuple[0])
         else:
             with open(os.path.join(self.save_dir,image_filename), "rb") as image_file:
                 f = image_file.read()
@@ -131,7 +127,7 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
 
     def save_on_click(self):
         print('Saving Image...')
-        saved_filename = self.downloadUtils.save_current_image(self.save_dir,self.current_raw_image,self.current_image_tuple[1])
+        saved_filename = DownloadUtils.save_current_image(self.save_dir,self.current_raw_image,self.current_image_tuple[1])
         self.saved_images[self.current_image_tuple[0]] = saved_filename
         self.update_saved_images_count_label()
 
@@ -148,8 +144,7 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
     def search_on_click(self):
         print('Searching')
         search_text = self.ui.search_term_text_box.text().strip()
-        num_samples = self.ui.num_images_text_box.text().strip()
-        new_images_list = self.webDriverUtils.get_image_urls_from_google_images(int(num_samples), search_text)
+        new_images_list = self.webDriverUtils.get_image_urls_from_google_images(search_text)
         for url , _ in new_images_list:
             self.ui.loaded_url.addItem(str(url))
         new_images_list.reverse()
@@ -160,7 +155,6 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
         self.loaded_url_count = len(self.next_images_list)
         self.update_current_image_index_label()
         print(search_text)
-        print(num_samples)
 
     def update_current_image_index_label(self):
         self.ui.current_image_index_label.setText(str(self.loaded_url_count)+' \ '+str(self.current_url_index))
