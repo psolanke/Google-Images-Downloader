@@ -5,6 +5,8 @@ import json
 import logging
 import psutil
 import threading
+from Queue import Queue
+from threading import Thread
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from pyvirtualdisplay import Display
@@ -99,31 +101,102 @@ class WebDriverUtils:
 
 class DownloadUtils:
 
+    ERROR_IMAGE = 'no-image-icon.jpg'
+
     def __init__(self):
-        self.is_download_complete = True
-        self.is_save_complete = True
+        self.num_prefetch_threads = 10
+        self.current_image_index = -1
+        self.image_tuple_list = []
+        self.prefetched_images_dict = {}
+        self.saved_images_dict = {}
+        self.prefetch_url_queue = Queue()
+        self.first_load = True
+        for i in range(num_prefetch_threads):
+            worker = Thread(target=download_image_from_url, args=(self))
+            worker.setDaemon(True)
+            worker.start()
 
-    def download_image_from_url(self,img_url):
-        raw_img = urllib.request.urlopen(img_url,timeout=1000)
-        raw_img = raw_img.read()
-        return raw_img
+    def download_image_from_url(self):
+        while True:
+            print('Looking for the next url')
+            img_url = self.prefetch_url_queue.get()
+            print('Downloading:' + url)
+            # instead of really downloading the URL,
+            # we just pretend and sleep
+            try:
+                raw_img = urllib.request.urlopen(img_url,timeout=1000)
+                raw_img = raw_img.read()
+            except:
+                with open(ERROR_IMAGE, 'rb') as image_file:
+                    image = image_file.read()
+                raw_img = image
+            self.prefetched_images_dict[img_url] = raw_img
+            self.prefetch_url_queue.task_done()
 
+    def get_next_image(self):
+        self.current_image_index += 1
+        url , _ = self.image_tuple_list[self.current_image_index]
+        raw_image = self.prefetched_images_dict.get(url)
+        prefetch_url = self.image_tuple_list[self.current_image_index + self.num_prefetch_threads]
+        if not prefetch_url in self.prefetched_images_dict:
+            self.prefetch_url_queue.put(prefetch_url)
+            self.prefetched_images_dict[prefetch_url] = None
+        self.current_image_index += 1
+        return raw_image
 
-    def save_current_image(self,save_dir,raw_img,img_type):
-        filename = "img" + "_"+ str(int(time.time()))+"."+img_type
-        f = open(os.path.join(save_dir , filename), 'wb')
-        f.write(raw_img)
-        f.close()
-        return filename
+    def get_previous_image(self):
+        self.current_image_index -= 1
+        url , _ = self.image_tuple_list[self.current_image_index]
+        if url in self.saved_images_dict:
+            image_filename = self.saved_images_dict.get(url)
+            with open(image_filename, "rb") as image_file:
+                f = image_file.read()
+                raw_image = bytearray(f)
+        else:
+            raw_image = self.prefetched_images_dict.get(url)
+        return raw_image
 
-    class ThreadFunc(threading.Thread):
-        def __init__(self, target, *args):
-            self._target = target
-            self._args = args
-            threading.Thread.__init__(self)
+    def delete_current_image(self):
+        image_filename = self.saved_images_dict.pop(self.image_tuple_list[self.current_image_index]) 
+        os.remove(image_filename)
+        return image_filename
+
+    def get_current_image_index(self):
+        return self.current_image_index
+
+    def get_url_count(self):
+        return len(self.image_tuple_list)
+
+    def get_saved_images_count(self):
+        return len(self.saved_images_dict)
+    
+    def update_url_list(self, url_list):
+        url_list.reverse()
+        self.image_tuple_list = self.image_tuple_list + url_list 
+        if self.first_load:
+            for i in range(1,self.num_prefetch_threads+1):
+                self.prefetch_url_queue.put(self.image_tuple_list[self.current_image_index+i])
+                self.prefetched_images_dict[self.image_tuple_list[self.current_image_index+i]] = None
+
+    def save_current_image(self,save_dir):
+        current_image = self.image_tuple_list[self.current_image_index]
+        img_type = current_image[1]
+        img_url = current_image[0]
+        raw_image = self.prefetched_images_dict.pop(img_url)
+        saved_filename = os.path.join(save_dir , "img" + "_"+ str(int(time.time()))+"."+img_type)
+        with open(saved_filename, 'wb') as image_file:
+            image_file.write(raw_image)
+        self.saved_images_dict[img_url] = saved_filename
+        return saved_filename
+
+    # class ThreadFunc(threading.Thread):
+    #     def __init__(self, target, *args):
+    #         self._target = target
+    #         self._args = args
+    #         threading.Thread.__init__(self)
      
-        def run(self):
-            self._target(*self._args)
+    #     def run(self):
+    #         self._target(*self._args)
 
 def main(args):
     pause = 5

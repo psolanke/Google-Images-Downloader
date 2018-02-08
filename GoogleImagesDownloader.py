@@ -53,19 +53,9 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
     
     def __init__(self, parent=None):
         super(GoogleImagesDownloader, self).__init__(parent)
-
-        self.prefetch_images = {'previous' : None, 'current' : None, 'next' : None}
-        self.prefetch_images_list = []
-        self.previous_images_list = []
-        self.next_images_list = []
         self.webDriverUtils = WebDriverUtils()
         self.downloadUtils = DownloadUtils()
         self.save_dir = os.getcwd()
-        self.current_image_tuple = ()
-        self.current_url_index = 0
-        self.saved_images = {}
-        self.loaded_url_count = 0
-        self.current_raw_image = None
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.ui.delete_button.clicked.connect(self.delete_on_click)
@@ -92,53 +82,36 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
 
     def next_image_on_click(self):
         print('Next Image')
-        if self.current_image_tuple:
-            self.previous_images_list.append(self.current_image_tuple)
-        self.current_image_tuple = self.next_images_list.pop()
-        self.current_url_index += 1
-        self.load_current_image_tuple()
+        raw_image = downloadUtils.get_next_image()
+        self.update_image_view(raw_image)
         self.update_current_image_index_label()
         print(self.current_image_tuple)
 
     def previous_image_on_click(self):
         print('Previous Image')
-        if self.previous_images_list:
-            self.next_images_list.append(self.current_image_tuple)
-            self.current_image_tuple = self.previous_images_list.pop()
-            self.current_url_index -= 1
-            self.load_current_image_tuple()
-            self.update_current_image_index_label()
-        
+        downloadUtils.get_previous_image()
+        self.update_image_view()
+        self.update_current_image_index_label()
         print(self.current_image_tuple)
 
-    def load_current_image_tuple(self):
-        image_filename = self.saved_images.get(self.current_image_tuple[0])
-        if image_filename == None:
-            raw_image = DownloadUtils.get_image_from_url(self.current_image_tuple[0])
-        else:
-            with open(os.path.join(self.save_dir,image_filename), "rb") as image_file:
-                f = image_file.read()
-                raw_image = bytearray(f)
-
-        self.current_raw_image = raw_image
+    def update_image_view(self, raw_image):
         qimage = ImageQt(Image.open(io.BytesIO(raw_image)))
         pixmap = QtGui.QPixmap.fromImage(qimage).scaled(800,800, aspectRatioMode=QtCore.Qt.KeepAspectRatio, transformMode=QtCore.Qt.SmoothTransformation)
         self.ui.image_view.setPixmap(pixmap)
 
     def save_on_click(self):
         print('Saving Image...')
-        saved_filename = DownloadUtils.save_current_image(self.save_dir,self.current_raw_image,self.current_image_tuple[1])
-        self.saved_images[self.current_image_tuple[0]] = saved_filename
+        saved_filename = downloadUtils.save_current_image(self.save_dir)
         self.update_saved_images_count_label()
 
     def delete_on_click(self):
         print('Deleting Image...')
-        os.remove(os.path.join(self.save_dir,self.saved_images.get(self.current_image_tuple[0])))
-        self.saved_images.pop(self.current_image_tuple[0])
+        self.downloadUtils.delete_current_image()
         self.update_saved_images_count_label()
 
     def update_saved_images_count_label(self):
-        self.ui.saved_images_count_label.setText(str(len(self.saved_images)))
+        count = self.downloadUtils.get_saved_images_count()
+        self.ui.saved_images_count_label.setText(str(len(count)))
 
 
     def search_on_click(self):
@@ -147,17 +120,14 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
         new_images_list = self.webDriverUtils.get_image_urls_from_google_images(search_text)
         for url , _ in new_images_list:
             self.ui.loaded_url.addItem(str(url))
-        new_images_list.reverse()
-        if not self.next_images_list:
-            self.next_images_list = new_images_list
-        else:
-            self.next_images_list = new_images_list + self.next_images_list
-        self.loaded_url_count = len(self.next_images_list)
+        self.downloadUtils.update_url_list(new_images_list)
         self.update_current_image_index_label()
         print(search_text)
 
     def update_current_image_index_label(self):
-        self.ui.current_image_index_label.setText(str(self.loaded_url_count)+' \ '+str(self.current_url_index))
+        count = self.downloadUtils.get_url_count()
+        current_index = self.downloadUtils.get_current_image_index()
+        self.ui.current_image_index_label.setText(str(count)+' \ '+str(current_index))
 
     def save_dir_on_click(self):
         print('changing save dir')
