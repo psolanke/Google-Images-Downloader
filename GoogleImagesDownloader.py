@@ -82,17 +82,17 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
 
     def next_image_on_click(self):
         print('Next Image')
-        raw_image = downloadUtils.get_next_image()
+        raw_image = self.downloadUtils.get_next_image()
+        while not raw_image:
+            raw_image = self.downloadUtils.get_next_image()
         self.update_image_view(raw_image)
         self.update_current_image_index_label()
-        print(self.current_image_tuple)
 
     def previous_image_on_click(self):
         print('Previous Image')
-        downloadUtils.get_previous_image()
-        self.update_image_view()
+        raw_image = self.downloadUtils.get_previous_image()
+        self.update_image_view(raw_image)
         self.update_current_image_index_label()
-        print(self.current_image_tuple)
 
     def update_image_view(self, raw_image):
         qimage = ImageQt(Image.open(io.BytesIO(raw_image)))
@@ -101,7 +101,7 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
 
     def save_on_click(self):
         print('Saving Image...')
-        saved_filename = downloadUtils.save_current_image(self.save_dir)
+        saved_filename = self.downloadUtils.save_current_image(self.save_dir)
         self.update_saved_images_count_label()
 
     def delete_on_click(self):
@@ -111,7 +111,7 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
 
     def update_saved_images_count_label(self):
         count = self.downloadUtils.get_saved_images_count()
-        self.ui.saved_images_count_label.setText(str(len(count)))
+        self.ui.saved_images_count_label.setText(count)
 
 
     def search_on_click(self):

@@ -5,7 +5,7 @@ import json
 import logging
 import psutil
 import threading
-from Queue import Queue
+from queue import Queue
 from threading import Thread
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -111,49 +111,61 @@ class DownloadUtils:
         self.saved_images_dict = {}
         self.prefetch_url_queue = Queue()
         self.first_load = True
-        for i in range(num_prefetch_threads):
-            worker = Thread(target=download_image_from_url, args=(self))
+        for i in range(self.num_prefetch_threads):
+            worker = Thread(target=self.download_image_from_url)
             worker.setDaemon(True)
             worker.start()
 
     def download_image_from_url(self):
         while True:
             print('Looking for the next url')
-            img_url = self.prefetch_url_queue.get()
-            print('Downloading:' + url)
+            img_url, _ = self.prefetch_url_queue.get()
+            print('Downloading:' + img_url)
             # instead of really downloading the URL,
             # we just pretend and sleep
             try:
                 raw_img = urllib.request.urlopen(img_url,timeout=1000)
                 raw_img = raw_img.read()
             except:
-                with open(ERROR_IMAGE, 'rb') as image_file:
+                with open(self.ERROR_IMAGE, 'rb') as image_file:
                     image = image_file.read()
                 raw_img = image
             self.prefetched_images_dict[img_url] = raw_img
             self.prefetch_url_queue.task_done()
 
     def get_next_image(self):
-        self.current_image_index += 1
-        url , _ = self.image_tuple_list[self.current_image_index]
-        raw_image = self.prefetched_images_dict.get(url)
-        prefetch_url = self.image_tuple_list[self.current_image_index + self.num_prefetch_threads]
-        if not prefetch_url in self.prefetched_images_dict:
-            self.prefetch_url_queue.put(prefetch_url)
-            self.prefetched_images_dict[prefetch_url] = None
-        self.current_image_index += 1
+        url , _ = self.image_tuple_list[self.current_image_index + 1]
+        if url in self.saved_images_dict:
+            image_filename = self.saved_images_dict.get(url)
+            raw_image = self.get_image_from_file(image_filename)
+        else:
+            raw_image = self.prefetched_images_dict.get(url)
+        if raw_image:
+            print('Here')
+            self.current_image_index += 1
+            if self.current_image_index == 8:
+                self.save_current_image(raw_image)
+            prefetch_url = self.image_tuple_list[self.current_image_index + self.num_prefetch_threads]
+            if not prefetch_url in self.prefetched_images_dict:
+                self.prefetch_url_queue.put(prefetch_url)
+                self.prefetched_images_dict[prefetch_url] = None
         return raw_image
 
     def get_previous_image(self):
-        self.current_image_index -= 1
+        if self.current_image_index:
+            self.current_image_index -= 1
         url , _ = self.image_tuple_list[self.current_image_index]
         if url in self.saved_images_dict:
             image_filename = self.saved_images_dict.get(url)
-            with open(image_filename, "rb") as image_file:
-                f = image_file.read()
-                raw_image = bytearray(f)
+            raw_image = self.get_image_from_file(image_filename)
         else:
             raw_image = self.prefetched_images_dict.get(url)
+        return raw_image
+
+    def get_image_from_file(self, image_filename):
+        with open(image_filename, "rb") as image_file:
+            f = image_file.read()
+            raw_image = bytearray(f)
         return raw_image
 
     def delete_current_image(self):
@@ -162,7 +174,7 @@ class DownloadUtils:
         return image_filename
 
     def get_current_image_index(self):
-        return self.current_image_index
+        return self.current_image_index + 1
 
     def get_url_count(self):
         return len(self.image_tuple_list)
@@ -171,12 +183,12 @@ class DownloadUtils:
         return len(self.saved_images_dict)
     
     def update_url_list(self, url_list):
-        url_list.reverse()
         self.image_tuple_list = self.image_tuple_list + url_list 
         if self.first_load:
             for i in range(1,self.num_prefetch_threads+1):
                 self.prefetch_url_queue.put(self.image_tuple_list[self.current_image_index+i])
                 self.prefetched_images_dict[self.image_tuple_list[self.current_image_index+i]] = None
+            self.first_load = False
 
     def save_current_image(self,save_dir):
         current_image = self.image_tuple_list[self.current_image_index]
