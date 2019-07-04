@@ -21,9 +21,10 @@ class WebDriverUtils:
     This class is responsible for all webdriver related functionality
     """
     
-    GEKO_EXECUTABLE_PATH = './geckodriver'
+    GEKO_EXECUTABLE_PATH = './resources/geckodriver'
     URL = "http://www.google.co.in/search?q={}&source=lnms&tbm=isch"
     SHOW_MORE_BUTTON_ID = 'smb'
+    
 
     def __init__(self):
         self.display = Display(visible=0, size=[800, 600])
@@ -101,7 +102,7 @@ class WebDriverUtils:
 
 class DownloadUtils:
 
-    ERROR_IMAGE = 'no-image-icon.jpg'
+    ERROR_IMAGE = './resources/no-image-icon.jpg'
 
     def __init__(self):
         self.num_prefetch_threads = 10
@@ -144,7 +145,7 @@ class DownloadUtils:
             print('Here')
             self.current_image_index += 1
             if self.current_image_index == 8:
-                self.save_current_image(raw_image)
+                self.save_current_image('.')
             prefetch_url = self.image_tuple_list[self.current_image_index + self.num_prefetch_threads]
             if not prefetch_url in self.prefetched_images_dict:
                 self.prefetch_url_queue.put(prefetch_url)
@@ -160,6 +161,7 @@ class DownloadUtils:
             raw_image = self.get_image_from_file(image_filename)
         else:
             raw_image = self.prefetched_images_dict.get(url)
+            print('Get from Queue')
         return raw_image
 
     def get_image_from_file(self, image_filename):
@@ -194,11 +196,16 @@ class DownloadUtils:
         current_image = self.image_tuple_list[self.current_image_index]
         img_type = current_image[1]
         img_url = current_image[0]
-        raw_image = self.prefetched_images_dict.pop(img_url)
-        saved_filename = os.path.join(save_dir , "img" + "_"+ str(int(time.time()))+"."+img_type)
-        with open(saved_filename, 'wb') as image_file:
-            image_file.write(raw_image)
-        self.saved_images_dict[img_url] = saved_filename
+        saved_filename = ''
+        if img_url in self.prefetched_images_dict:
+            print("Saving Image to {} \nType: {}\t URL: {}".format(save_dir,img_type,img_url))
+            raw_image = self.prefetched_images_dict.pop(img_url)
+            saved_filename = os.path.join(save_dir , "img_" + str(int(time.time()))+"."+img_type)
+            with open(saved_filename, 'wb') as image_file:
+                image_file.write(raw_image)
+            self.saved_images_dict[img_url] = saved_filename
+        else:
+            print('Image Not Prefetched')
         return saved_filename
 
     # class ThreadFunc(threading.Thread):

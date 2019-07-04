@@ -25,6 +25,7 @@ except ImportError:
         sip.setapi('QVariant', 2)
     from PyQt4 import QtCore, QtGui
 
+
 def setup_logger():
     LOG_FILENAME = 'google_image_downloader.log'
 
@@ -33,13 +34,15 @@ def setup_logger():
     parent_logger.setLevel(logging.DEBUG)
 
     # Add the log message handler to the logger
-    fh = logging.handlers.RotatingFileHandler(LOG_FILENAME, maxBytes=100000, backupCount=5)
+    fh = logging.handlers.RotatingFileHandler(LOG_FILENAME,
+                                              maxBytes=100000, backupCount=5)
     fh.setLevel(logging.DEBUG)
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.ERROR)
 
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(name)s -' +
+                                  ' %(levelname)s - %(message)s')
     fh.setFormatter(formatter)
     ch.setFormatter(formatter)
 
@@ -49,8 +52,8 @@ def setup_logger():
 
     parent_logger.info('Logger Setup Complete')
 
+
 class GoogleImagesDownloader(QtGui.QMainWindow):
-    
     def __init__(self, parent=None):
         super(GoogleImagesDownloader, self).__init__(parent)
         self.webDriverUtils = WebDriverUtils()
@@ -69,13 +72,13 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
         self.add_action('a', self.previous_image_on_click)
         self.add_action('s', self.save_on_click)
 
-    def closeEvent(self,event):
+    def closeEvent(self, event):
         print('On_close')
         self.webDriverUtils.close()
 
     def add_action(self, shortcut, method_name):
-        action = QtGui.QAction(self) 
-        action.setShortcut(shortcut) 
+        action = QtGui.QAction(self)
+        action.setShortcut(shortcut)
         action.setShortcutContext(QtCore.Qt.ApplicationShortcut)
         self.addAction(action)
         QtCore.QObject.connect(action, QtCore.SIGNAL("triggered()"), method_name)
@@ -96,7 +99,7 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
 
     def update_image_view(self, raw_image):
         qimage = ImageQt(Image.open(io.BytesIO(raw_image)))
-        pixmap = QtGui.QPixmap.fromImage(qimage).scaled(800,800, aspectRatioMode=QtCore.Qt.KeepAspectRatio, transformMode=QtCore.Qt.SmoothTransformation)
+        pixmap = QtGui.QPixmap.fromImage(qimage).scaled(800, 800, aspectRatioMode=QtCore.Qt.KeepAspectRatio, transformMode=QtCore.Qt.SmoothTransformation)
         self.ui.image_view.setPixmap(pixmap)
 
     def save_on_click(self):
@@ -113,12 +116,11 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
         count = self.downloadUtils.get_saved_images_count()
         self.ui.saved_images_count_label.setText(count)
 
-
     def search_on_click(self):
         print('Searching')
         search_text = self.ui.search_term_text_box.text().strip()
         new_images_list = self.webDriverUtils.get_image_urls_from_google_images(search_text)
-        for url , _ in new_images_list:
+        for url, _ in new_images_list:
             self.ui.loaded_url.addItem(str(url))
         self.downloadUtils.update_url_list(new_images_list)
         self.update_current_image_index_label()
@@ -132,14 +134,14 @@ class GoogleImagesDownloader(QtGui.QMainWindow):
     def save_dir_on_click(self):
         print('changing save dir')
         open_dir = QtGui.QFileDialog.getExistingDirectory(self, "Open Directory",
-                                                 self.save_dir,
-                                                 QtGui.QFileDialog.ShowDirsOnly
-                                                 | QtGui.QFileDialog.DontResolveSymlinks).strip()
+                                                          self.save_dir,
+                                                          QtGui.QFileDialog.ShowDirsOnly
+                                                          | QtGui.QFileDialog.DontResolveSymlinks).strip()
         print(open_dir)
         if not open_dir == 0:
             print('New Folder : ' + open_dir)
             self.save_dir = open_dir
-    
+
 
 if __name__ == '__main__':
     setup_logger()

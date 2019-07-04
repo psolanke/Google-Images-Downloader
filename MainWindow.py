@@ -23,6 +23,9 @@ except AttributeError:
         return QtGui.QApplication.translate(context, text, disambig)
 
 class Ui_MainWindow(object):
+
+    DEFAULT_IMAGE_PATH = "resources/start.jpg"
+
     def setupUi(self, MainWindow):
         MainWindow.setObjectName(_fromUtf8("MainWindow"))
         MainWindow.resize(1016, 600)
@@ -176,7 +179,7 @@ class Ui_MainWindow(object):
         self.saved_images_count_label.setText(_translate("MainWindow", "0", None))
         self.save_all_button.setText(_translate("MainWindow", "Save all", None))
         self.current_image_index_label.setText(_translate("MainWindow", "0/0", None))
-        image_profile = QtGui.QImage('start.jpg') #QImage object
+        image_profile = QtGui.QImage(self.DEFAULT_IMAGE_PATH) #QImage object
         image_profile = image_profile.scaled(800,800, aspectRatioMode=QtCore.Qt.KeepAspectRatio, transformMode=QtCore.Qt.SmoothTransformation)
         leftPixelMap = QtGui.QPixmap(QtGui.QPixmap.fromImage(image_profile))
         self.image_view.setPixmap(leftPixelMap)
