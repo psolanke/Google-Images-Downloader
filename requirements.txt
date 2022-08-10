@@ -59,7 +59,7 @@ MarkupSafe==0.23
 marshmallow==2.14.0
 matplotlib==2.1.0
 mistune==0.7.4
-nbconvert==5.3.1
+nbconvert==6.3.0
 nbformat==4.4.0
 nltk==3.2.5
 nolearn==0.6.0
